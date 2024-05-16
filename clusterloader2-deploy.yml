@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clusterloader2
+  labels:
+    app: clusterloader2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: clusterloader2
+  template:
+    metadata:
+      labels:
+        app: clusterloader2
+    spec:
+      containers:
+        - name: clusterloader2-container
+          image: release.daocloud.io/lsy-public/clusterloader2:v0.1
+
+          command:
+            - /clusterloader2
+            - --mastername=node1
+            - --masterip=10.70.12.135
+            - --testconfig=config.yaml
+            - --provider=local
+            - --provider-config=ROOT_KUBECONFIG=./kubemark-kubeconfig
+            - --kubeconfig=./kubemark-kubeconfig
+            - --v=2
+            - --enable-exec-service=false
+            - --enable-prometheus-server=true
+            - --tear-down-prometheus-server=false
+            - --prometheus-manifest-path = /root/manifests
+            - --nodes=20
+            - 2>&1 | tee /root/output.txt
+          volumeMounts:
+            - name: test-dir
+              mountPath: /root/test
+      volumes:
+        - name: test-dir
+          hostPath:
+            path: /root/test
+            type: Directory

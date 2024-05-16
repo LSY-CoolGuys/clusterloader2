@@ -1,0 +1,2 @@
+FROM gcr.m.daocloud.io/distroless/base@sha256:5e3fac1733c75e0e879a9770724e3960610a5cfbbfb5366559fbc334fe86c249
+COPY clusterloader2 /clusterloader2
