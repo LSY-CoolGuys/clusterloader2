@@ -283,6 +283,7 @@ func main() {
 	}
 
 	var prometheusController *prometheus.Controller
+	var simpleController *prometheus.Controller
 	var prometheusFramework *framework.Framework
 	if clusterLoaderConfig.PrometheusConfig.EnableServer {
 		if prometheusController, err = prometheus.NewController(&clusterLoaderConfig); err != nil {
@@ -293,10 +294,10 @@ func main() {
 			klog.Exitf("Error while setting up prometheus stack: %v", err)
 		}
 	} else {
-		if prometheusController, err = prometheus.NewSimpleController(&clusterLoaderConfig); err != nil {
+		if simpleController, err = prometheus.NewSimpleController(&clusterLoaderConfig); err != nil {
 			klog.Exitf("Error while creating simple prometheus controller: %v", err)
 		}
-		if err := prometheusController.OnlyExposeAPIServerMetrics(); err != nil {
+		if err := simpleController.OnlyExposeAPIServerMetrics(); err != nil {
 			klog.Exitf("Error while exposing APIServer Metrics : %v", err)
 		}
 	}
@@ -366,8 +367,14 @@ func main() {
 			klog.Errorf("Error while tearing down exec service: %v", err)
 		}
 	}
+
 	if failedTestItems := testReporter.GetNumberOfFailedTestItems(); failedTestItems > 0 {
 		klog.Exitf("%d tests have failed!", failedTestItems)
+		_, _ = os.LookupEnv("TEST_STATE")
+		os.Setenv("TEST_STATE", "FAILED")
+	} else {
+		_, _ = os.LookupEnv("TEST_STATE")
+		os.Setenv("TEST_STATE", "SUCCESS")
 	}
 }
 
