@@ -56,7 +56,7 @@ func InitFlags(p *config.PrometheusConfig) {
 	flags.BoolEnvVar(&p.ScrapeEtcd, "prometheus-scrape-etcd", "PROMETHEUS_SCRAPE_ETCD", false, "Whether to scrape etcd metrics.")
 	flags.BoolEnvVar(&p.ScrapeNodeExporter, "prometheus-scrape-node-exporter", "PROMETHEUS_SCRAPE_NODE_EXPORTER", false, "Whether to scrape node exporter metrics.")
 	flags.BoolEnvVar(&p.ScrapeKubelets, "prometheus-scrape-kubelets", "PROMETHEUS_SCRAPE_KUBELETS", false, "Whether to scrape kubelets. Experimental, may not work in larger clusters. Requires heapster node to be at least n1-standard-4, which needs to be provided manually.")
-	flags.BoolEnvVar(&p.ScrapeKubeProxy, "prometheus-scrape-kube-proxy", "PROMETHEUS_SCRAPE_KUBE_PROXY", true, "Whether to scrape kube proxy.")
+	flags.BoolEnvVar(&p.ScrapeKubeProxy, "prometheus-scrape-kube-proxy", "PROMETHEUS_SCRAPE_KUBE_PROXY", false, "Whether to scrape kube proxy.")
 	flags.BoolEnvVar(&p.ScrapeKubeStateMetrics, "prometheus-scrape-kube-state-metrics", "PROMETHEUS_SCRAPE_KUBE_STATE_METRICS", false, "Whether to scrape kube-state-metrics. Only run occasionally.")
 	flags.BoolEnvVar(&p.ScrapeMetricsServerMetrics, "prometheus-scrape-metrics-server", "PROMETHEUS_SCRAPE_METRICS_SERVER_METRICS", false, "Whether to scrape metrics-server. Only run occasionally.")
 	flags.BoolEnvVar(&p.ScrapeNodeLocalDNS, "prometheus-scrape-node-local-dns", "PROMETHEUS_SCRAPE_NODE_LOCAL_DNS", false, "Whether to scrape node-local-dns pods.")
@@ -101,6 +101,18 @@ func CompleteConfig(p *config.PrometheusConfig) {
 	p.NodeExporterPod = p.ManifestPath + "/exporters/node_exporter/node-exporter.yaml"
 	p.KubeStateMetricsManifests = p.ManifestPath + "/exporters/kube-state-metrics/*.yaml"
 	p.MetricsServerManifests = p.ManifestPath + "/exporters/metrics-server/*.yaml"
+}
+
+func NewSimpleController(clusterLoaderConfig *config.ClusterLoaderConfig) (pc *Controller, err error) {
+	pc = &Controller{
+		clusterLoaderConfig: clusterLoaderConfig,
+		provider:            clusterLoaderConfig.ClusterConfig.Provider,
+	}
+
+	if pc.framework, err = framework.NewRootFramework(&clusterLoaderConfig.ClusterConfig, numK8sClients); err != nil {
+		return nil, err
+	}
+	return pc, nil
 }
 
 // NewController creates a new instance of Controller for the given config.
@@ -213,22 +225,22 @@ func (pc *Controller) SetUpPrometheusStack() error {
 			return err
 		}
 	}
-	if _, ok := pc.templateMapping["MasterIps"]; ok {
-		if err := pc.exposeAPIServerMetrics(); err != nil {
-			return err
-		}
-		if err := pc.applyManifests(pc.clusterLoaderConfig.PrometheusConfig.MasterIPServiceMonitors); err != nil {
-			return err
-		}
-	}
-	if err := pc.waitForPrometheusToBeHealthy(); err != nil {
-		dumpAdditionalLogsOnPrometheusSetupFailure(k8sClient)
+	//if _, ok := pc.templateMapping["MasterIps"]; ok {
+	if err := pc.exposeAPIServerMetrics(); err != nil {
 		return err
 	}
-	klog.V(2).Info("Prometheus stack set up successfully")
-	if err := pc.cachePrometheusDiskMetadataIfEnabled(); err != nil {
-		klog.Warningf("Error while caching prometheus disk metadata: %v", err)
-	}
+	//if err := pc.applyManifests(pc.clusterLoaderConfig.PrometheusConfig.MasterIPServiceMonitors); err != nil {
+	//	return err
+	//}
+	//}
+	//if err := pc.waitForPrometheusToBeHealthy(); err != nil {
+	//	dumpAdditionalLogsOnPrometheusSetupFailure(k8sClient)
+	//	return err
+	//}
+	klog.V(2).Info("expose APIServer metrics set up successfully")
+	//if err := pc.cachePrometheusDiskMetadataIfEnabled(); err != nil {
+	//	klog.Warningf("Error while caching prometheus disk metadata: %v", err)
+	//}
 	return nil
 }
 
@@ -462,4 +474,11 @@ func getMasterIpsFromKubernetesService(clusterConfig config.ClusterConfig) ([]st
 
 func isEtcdEndpoint(endpoint string) bool {
 	return endpoint == "etcd-2379" || endpoint == "etcd-2382"
+}
+
+func (pc *Controller) OnlyExposeAPIServerMetrics() error {
+	if err := pc.exposeAPIServerMetrics(); err != nil {
+		return err
+	}
+	return nil
 }

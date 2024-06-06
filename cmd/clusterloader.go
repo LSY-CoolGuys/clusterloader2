@@ -292,6 +292,13 @@ func main() {
 		if err := prometheusController.SetUpPrometheusStack(); err != nil {
 			klog.Exitf("Error while setting up prometheus stack: %v", err)
 		}
+	} else {
+		if prometheusController, err = prometheus.NewSimpleController(&clusterLoaderConfig); err != nil {
+			klog.Exitf("Error while creating simple prometheus controller: %v", err)
+		}
+		if err := prometheusController.OnlyExposeAPIServerMetrics(); err != nil {
+			klog.Exitf("Error while exposing APIServer Metrics : %v", err)
+		}
 	}
 	if clusterLoaderConfig.EnableExecService {
 		if err := execservice.SetUpExecService(f); err != nil {
