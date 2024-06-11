@@ -370,11 +370,9 @@ func main() {
 
 	if failedTestItems := testReporter.GetNumberOfFailedTestItems(); failedTestItems > 0 {
 		klog.Exitf("%d tests have failed!", failedTestItems)
-		_, _ = os.LookupEnv("TEST_STATE")
-		os.Setenv("TEST_STATE", "FAILED")
-	} else {
-		_, _ = os.LookupEnv("TEST_STATE")
-		os.Setenv("TEST_STATE", "SUCCESS")
+		if err := os.WriteFile("/tmp/result/status.yaml", []byte(""), 0644); err != nil {
+			klog.Errorf("写入失败标志文件status.yaml失败： %v", err)
+		}
 	}
 }
 
