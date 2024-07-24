@@ -238,31 +238,49 @@ func main() {
 	defer klog.Flush()
 	initFlags()
 	if err := flags.Parse(); err != nil {
+		if err := os.WriteFile("/tmp/result/status.txt", []byte("0"), 0644); err != nil {
+			klog.Errorf("写入失败标志文件status.yaml失败： %v", err)
+		}
 		klog.Exitf("Flag parse failed: %v", err)
 	}
 
 	provider, err := provider.NewProvider(&providerInitOptions)
 	if err != nil {
+		if err := os.WriteFile("/tmp/result/status.txt", []byte("0"), 0644); err != nil {
+			klog.Errorf("写入失败标志文件status.yaml失败： %v", err)
+		}
 		klog.Exitf("Error init provider: %v", err)
 	}
 	clusterLoaderConfig.ClusterConfig.Provider = provider
 
 	if errList := validateFlags(); !errList.IsEmpty() {
+		if err := os.WriteFile("/tmp/result/status.txt", []byte("0"), 0644); err != nil {
+			klog.Errorf("写入失败标志文件status.yaml失败： %v", err)
+		}
 		klog.Exitf("Parsing flags error: %v", errList.String())
 	}
 
 	mclient, err := framework.NewMultiClientSet(clusterLoaderConfig.ClusterConfig.KubeConfigPath, 1)
 	if err != nil {
+		if err := os.WriteFile("/tmp/result/status.txt", []byte("0"), 0644); err != nil {
+			klog.Errorf("写入失败标志文件status.yaml失败： %v", err)
+		}
 		klog.Exitf("Client creation error: %v", err)
 	}
 
 	if err = completeConfig(mclient); err != nil {
+		if err := os.WriteFile("/tmp/result/status.txt", []byte("0"), 0644); err != nil {
+			klog.Errorf("写入失败标志文件status.yaml失败： %v", err)
+		}
 		klog.Exitf("Config completing error: %v", err)
 	}
 
 	klog.V(0).Infof("Using config: %+v", clusterLoaderConfig)
 
 	if err = createReportDir(); err != nil {
+		if err := os.WriteFile("/tmp/result/status.txt", []byte("0"), 0644); err != nil {
+			klog.Errorf("写入失败标志文件status.yaml失败： %v", err)
+		}
 		klog.Exitf("Cannot create report directory: %v", err)
 	}
 
@@ -271,6 +289,9 @@ func main() {
 	}
 
 	if err = verifyCluster(mclient.GetClient()); err != nil {
+		if err := os.WriteFile("/tmp/result/status.txt", []byte("0"), 0644); err != nil {
+			klog.Errorf("写入失败标志文件status.yaml失败： %v", err)
+		}
 		klog.Exitf("Cluster verification error: %v", err)
 	}
 
@@ -279,6 +300,9 @@ func main() {
 		getClientsNumber(clusterLoaderConfig.ClusterConfig.Nodes),
 	)
 	if err != nil {
+		if err := os.WriteFile("/tmp/result/status.txt", []byte("0"), 0644); err != nil {
+			klog.Errorf("写入失败标志文件status.yaml失败： %v", err)
+		}
 		klog.Exitf("Framework creation error: %v", err)
 	}
 
@@ -287,26 +311,44 @@ func main() {
 	var prometheusFramework *framework.Framework
 	if clusterLoaderConfig.PrometheusConfig.EnableServer {
 		if prometheusController, err = prometheus.NewController(&clusterLoaderConfig); err != nil {
+			if err := os.WriteFile("/tmp/result/status.txt", []byte("0"), 0644); err != nil {
+				klog.Errorf("写入失败标志文件status.yaml失败： %v", err)
+			}
 			klog.Exitf("Error while creating Prometheus Controller: %v", err)
 		}
 		prometheusFramework = prometheusController.GetFramework()
 		if err := prometheusController.SetUpPrometheusStack(); err != nil {
+			if err := os.WriteFile("/tmp/result/status.txt", []byte("0"), 0644); err != nil {
+				klog.Errorf("写入失败标志文件status.yaml失败： %v", err)
+			}
 			klog.Exitf("Error while setting up prometheus stack: %v", err)
 		}
 	} else {
 		if simpleController, err = prometheus.NewSimpleController(&clusterLoaderConfig); err != nil {
+			if err := os.WriteFile("/tmp/result/status.txt", []byte("0"), 0644); err != nil {
+				klog.Errorf("写入失败标志文件status.yaml失败： %v", err)
+			}
 			klog.Exitf("Error while creating simple prometheus controller: %v", err)
 		}
 		if err := simpleController.OnlyExposeAPIServerMetrics(); err != nil {
+			if err := os.WriteFile("/tmp/result/status.txt", []byte("0"), 0644); err != nil {
+				klog.Errorf("写入失败标志文件status.yaml失败： %v", err)
+			}
 			klog.Exitf("Error while exposing APIServer Metrics : %v", err)
 		}
 	}
 	if clusterLoaderConfig.EnableExecService {
 		if err := execservice.SetUpExecService(f); err != nil {
+			if err := os.WriteFile("/tmp/result/status.txt", []byte("0"), 0644); err != nil {
+				klog.Errorf("写入失败标志文件status.yaml失败： %v", err)
+			}
 			klog.Exitf("Error while setting up exec service: %v", err)
 		}
 	}
 	if err := imagepreload.Setup(&clusterLoaderConfig, f); err != nil {
+		if err := os.WriteFile("/tmp/result/status.txt", []byte("0"), 0644); err != nil {
+			klog.Errorf("写入失败标志文件status.yaml失败： %v", err)
+		}
 		klog.Exitf("Error while preloading images: %v", err)
 	}
 
@@ -321,6 +363,9 @@ func main() {
 	if testSuiteConfigPath != "" {
 		testSuite, err := config.LoadTestSuite(testSuiteConfigPath)
 		if err != nil {
+			if err := os.WriteFile("/tmp/result/status.txt", []byte("0"), 0644); err != nil {
+				klog.Errorf("写入失败标志文件status.yaml失败： %v", err)
+			}
 			klog.Exitf("Error while reading test suite: %v", err)
 		}
 		testScenarios = []api.TestScenario(testSuite)
@@ -338,10 +383,16 @@ func main() {
 	for i := range testScenarios {
 		ctx, errList := test.CreateTestContext(f, prometheusFramework, &clusterLoaderConfig, testReporter, &testScenarios[i])
 		if !errList.IsEmpty() {
+			if err := os.WriteFile("/tmp/result/status.txt", []byte("0"), 0644); err != nil {
+				klog.Errorf("写入失败标志文件status.yaml失败： %v", err)
+			}
 			klog.Exitf("Test context creation failed: %s", errList.String())
 		}
 		testConfig, errList := test.CompileTestConfig(ctx)
 		if !errList.IsEmpty() {
+			if err := os.WriteFile("/tmp/result/status.txt", []byte("0"), 0644); err != nil {
+				klog.Errorf("写入失败标志文件status.yaml失败： %v", err)
+			}
 			klog.Exitf("Test compilation failed: %s", errList.String())
 		}
 		if err := dumpTestConfig(ctx, testConfig); err != nil {
@@ -369,11 +420,12 @@ func main() {
 	}
 
 	if failedTestItems := testReporter.GetNumberOfFailedTestItems(); failedTestItems > 0 {
-		klog.Exitf("%d tests have failed!", failedTestItems)
-		if err := os.WriteFile("/tmp/result/status.yaml", []byte(""), 0644); err != nil {
+		if err := os.WriteFile("/tmp/result/status.yaml", []byte("0"), 0644); err != nil {
 			klog.Errorf("写入失败标志文件status.yaml失败： %v", err)
 		}
+		klog.Exitf("%d tests have failed!", failedTestItems)
 	}
+
 }
 
 func runSingleTest(ctx test.Context) {
